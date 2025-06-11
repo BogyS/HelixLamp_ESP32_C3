@@ -1,0 +1,5 @@
+{
+  "NTPServer": "pool.ntp.org",
+  "GMTOffsetSec": 7200,
+  "DaylightOffsetSec": 3600
+}

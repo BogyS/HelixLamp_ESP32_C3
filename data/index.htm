@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="color-scheme" content="light dark" />
+  <title>Helix Lamp</title>
+  <link rel="stylesheet" type="text/css" href="app/pico.classless.blue.css">
+</head>
+
+<body>
+  <main class="container">
+
+    <!-- Lamp Info -->
+    <section id="HelixLamp">
+      <h2>Helix Lamp</h2>
+    </section>
+
+    <section id="HelixLampInfo">
+      <table>
+        <tr>
+          <td><span id="info" style="text-align:center;"></span></td>
+          <td><img src="img/HelixLamp.jpg"  style="width: 200px; height: auto;"/></td>
+        </tr>
+      </table>
+    </section>
+
+    <!-- Lamp Effect Control  -->
+    <section>
+      <form id="controlForm">
+        <label for="listSelect">Select List:</label>
+        <select id="listSelect"></select>
+
+        <label for="effectSelect">Select Effect:</label>
+        <select id="effectSelect"></select>
+
+        <label>
+          <input type="checkbox" id="randomToggle" />
+          Enable Random Mode
+        </label>
+
+        <button type="submit">Apply</button>
+      </form>
+    </section>
+
+    <hr />
+
+    <section id="Menu">
+      <nav>
+        <ul>
+          <li><a href="/setup">Setup</a></li>
+          <li><a href="/edit">Edit</a></li>
+          <li><button id="sleepBtn" type="button">Sleep</button></li>
+        </ul>
+      </nav>
+    </section>
+
+    <!-- WebSocket Message Log -->
+    <section>
+      <pre id="msg"></pre>
+    </section>
+
+  </main>
+
+  <!-- JS for info polling + WebSocket -->
+  <script type="text/javascript">
+    //JS for Effect Control
+    let allLists = [];
+    let currentListIdx = 0;
+
+    async function fetchEffects() {
+      const res = await fetch('/effects');
+      const data = await res.json();
+      allLists = data.lists;
+
+      const listSelect = document.getElementById('listSelect');
+      listSelect.innerHTML = '';
+      allLists.forEach((list, idx) => {
+        const opt = new Option(list.name, idx);
+        listSelect.appendChild(opt);
+      });
+
+      listSelect.addEventListener('change', (e) => {
+        const listIdx = parseInt(e.target.value);
+        currentListIdx = listIdx;
+        populateEffects(listIdx);
+      });
+    }
+
+    function populateEffects(listIdx, effectIdx = 0) {
+      const effects = allLists[listIdx].effects;
+      const effectSelect = document.getElementById('effectSelect');
+      effectSelect.innerHTML = '';
+      effects.forEach((name, i) => {
+        const opt = new Option(name, i);
+        if (i === effectIdx) opt.selected = true;
+        effectSelect.appendChild(opt);
+      });
+    }
+
+    async function fetchState() {
+      const res = await fetch('/get_effect');
+      const data = await res.json();
+      currentListIdx = data.list_idx;
+      document.getElementById('listSelect').value = data.list_idx;
+      populateEffects(data.list_idx, data.effect_idx);
+      document.getElementById('randomToggle').checked = !!data.random;
+    }
+
+    document.getElementById('controlForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const list_idx = parseInt(document.getElementById('listSelect').value);
+      const effect_idx = parseInt(document.getElementById('effectSelect').value);
+      const random = document.getElementById('randomToggle').checked ? 1 : 0;
+
+      await fetch('/set_effect', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ list_idx, effect_idx, random })
+      });
+
+      fetchState();
+    });
+
+    async function initEffectControl() {
+      await fetchEffects();
+      await fetchState();
+    }
+
+    var xinfo;
+    function info() {
+      xinfo.open('GET', '/info');
+      xinfo.responseType = 'text';
+      xinfo.send();
+    }
+
+    window.onclose = function () {
+      xinfo.abort();
+    };
+
+    window.onload = function () {
+      xinfo = new XMLHttpRequest();
+      xinfo.onreadystatechange = function () {
+        if ((this.readyState == 4) && (xinfo.status == 200)) {
+          document.getElementById('info').innerHTML = this.responseText;
+        }
+      };
+      setInterval(info, 1000);
+
+      const ws = new WebSocket('ws://' + location.hostname + ':81/');
+      ws.onmessage = (event) => {
+        document.getElementById('msg').innerText += event.data + '\n';
+      };
+
+      // Also load effect data
+      initEffectControl();
+    };
+  </script>
+
+</body>
+</html>
