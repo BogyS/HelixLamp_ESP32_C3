@@ -9,6 +9,9 @@ It uses an **ESP32 C3** and the **FastLED** library to create dynamic LED lighti
 - Multiple lighting effects (rainbow, fade, color transitions, etc.)
 - 3D printed enclosure (external source)
 
+This project builds upon my previous work in [HelixLamp](https://github.com/BogyS/HelixLamp), where I first tested color palettes and button logic.
+
+
 ## 📦 What You Need
 
 - ESP32 C3 Super Mini
