@@ -13,8 +13,8 @@
 #include "hl_main.h"
 
 const char Name[] = "Helix Lamp";
-const char Ver[] = "25.06.11.05";
-const char MDNSName[] = "helix"; // used for mDNS and hostname
+const char Ver[] = "25.06.11.09"; // version of firmware
+const char MDNSName[] = "helix";  // used for mDNS and hostname
 // http://helix.local/...
 
 FSWebServer myWebServer(FILESYSTEM, 80, MDNSName);
@@ -74,15 +74,6 @@ void handleClock()
     serial_print("Handle Clock: ");
     serial_println(LogBuff);
     myWebServer.send(200, "text/plain", LogBuff);
-}
-
-void handleSleep()
-{
-    logValidTime();
-    logln("Sleep ...");
-    broadcastTXT("Sleep ...");
-    hl_Sleep(); // go to sleep
-    myWebServer.send(200, "text/plain", "Sleep");
 }
 
 void DispWiFi()
@@ -269,7 +260,6 @@ void handleSetEffect()
         logstr("Is random: ");
         logln(isRandom ? "true" : "false");
 
-        
         hl_Set(l_idx, e_idx, isRandom);
 
         String msg = "Effect changed: ";
@@ -277,7 +267,7 @@ void handleSetEffect()
         msg += " - ";
         msg += hl_EffectName(l_idx, e_idx);
 
-        broadcastTXT( msg.c_str() );
+        broadcastTXT(msg.c_str());
         logln(msg.c_str());
 
         myWebServer.send(200, "text/plain", "OK");
@@ -286,6 +276,16 @@ void handleSetEffect()
     {
         myWebServer.send(400, "text/plain", "Invalid or missing fields");
     }
+}
+
+void handleSleep()
+{
+    myWebServer.send(200, "text/plain", "OK");
+
+    logValidTime();
+    logln("Sleep ...");
+    broadcastTXT("Sleep ...");
+    hl_Sleep(); // go to sleep
 }
 
 void setup()
@@ -301,6 +301,13 @@ void setup()
     snprintf(LogBuff, LOG_BUFFER_SIZE, "%s v%s", Name, Ver);
     logln(LogBuff);
 
+    // start effects as soon as possible
+    logln("Setup effects ...");
+    hl_setup(); // setup the effects
+
+    hl_progressStart(6);
+    hl_progressStep();  //1
+
     String apName = MDNSName;
     apName += "-";
     apName += String(getChipId(), HEX);
@@ -313,6 +320,8 @@ void setup()
     logln(myIP.toString().c_str());
     DispWiFi();
 
+    hl_progressStep();  //2
+
     initConfig();
 
     myWebServer.on("/clock", handleClock);
@@ -320,7 +329,7 @@ void setup()
     myWebServer.on("/effects", HTTP_GET, handleEffects);
     myWebServer.on("/get_effect", HTTP_GET, handleGetEffect);
     myWebServer.on("/set_effect", HTTP_POST, handleSetEffect);
-    myWebServer.on("/sleep", handleSleep);
+    myWebServer.on("/sleep", HTTP_POST, handleSleep);
 
     myWebServer.begin();
     myWebServer.enableFsCodeEditor(getFSInfo);
@@ -330,8 +339,12 @@ void setup()
     serial_println(F("Open /edit page to view and edit files"));
     logln("HTTP server started");
 
+    hl_progressStep();  //3
+
     webSocket.begin();
     logln("WebSocket server started");
+
+    hl_progressStep();  //4
 
     if (loadConfig())
     {
@@ -361,6 +374,8 @@ void setup()
     loadAux();
     setupAux();
 
+    hl_progressStep();  //5
+
     // init and get the time
     configTime(GMTOffsetSec, DaylightOffsetSec, NTPServer.c_str());
     logstr("Local time: ");
@@ -369,10 +384,12 @@ void setup()
     SaveTime.setup(true);   // save from now
     UpdateTime.setup(true); // update from now
 
-    hl_setup(); // setup the effects
-
     NVSImpl::NVSLog();
     logln("**********");
+
+    hl_progressStep();  //6
+    delay(100);
+    hl_progressStop();
 }
 
 wl_status_t WiFiStatus = WL_IDLE_STATUS;

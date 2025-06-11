@@ -51,7 +51,8 @@
         <ul>
           <li><a href="/setup">Setup</a></li>
           <li><a href="/edit">Edit</a></li>
-          <li><button id="sleepBtn" type="button">Sleep</button></li>
+          <li><button id="sleepBtn" type="button" onclick="fetch('/sleep', { method: 'POST' })">Sleep</button></li>
+          <li><button onclick="document.getElementById('msg').innerText='';">Clr msg</button></li>
         </ul>
       </nav>
     </section>

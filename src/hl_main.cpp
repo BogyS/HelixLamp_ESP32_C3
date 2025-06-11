@@ -25,7 +25,7 @@
 #include "Config.h"
 
 #define BILED_PIN 8 // Built-in LED pin (on ESP32, it's GPIO 8)
-#define BTN_PIN 2       // Button pin.
+#define BTN_PIN 2   // Button pin.
 
 OneButton btn(BTN_PIN); // create button object that attach to pin 2
 
@@ -49,7 +49,7 @@ SolidColor solidColor;
 uint8_t listIdx = 0;
 Mode* list[] = {&misc, &palette, &efects, &solidColor};
 
-const __FlashStringHelper* listName( uint8_t idx)
+const __FlashStringHelper* listName(uint8_t idx)
 {
     switch (idx)
     {
@@ -68,7 +68,7 @@ const __FlashStringHelper* listName( uint8_t idx)
 
 const __FlashStringHelper* listName()
 {
-   return listName( listIdx );
+    return listName(listIdx);
 }
 
 void btnISR()
@@ -224,9 +224,9 @@ void hl_LongPressStart()
     ledOn = false;
     digitalWrite(BILED_PIN, ledOn);
     // save data
-    //EEPROM.update(0, randomList ? 1 : 0); // random
-    //EEPROM.update(1, listIdx);
-    //EEPROM.update(2, list[listIdx]->Get());
+    // EEPROM.update(0, randomList ? 1 : 0); // random
+    // EEPROM.update(1, listIdx);
+    // EEPROM.update(2, list[listIdx]->Get());
     // save data to NVS
     NVSImpl nvs("hl_data", NVS_READWRITE);
     nvs.set_u8("rndLst", randomList ? 1 : 0);
@@ -234,7 +234,7 @@ void hl_LongPressStart()
     nvs.set_u8("lstPos", list[listIdx]->Get());
 
     // Configure GPIO wake-up on button press (LOW level)
-    //esp_sleep_enable_ext0_wakeup(GPIO_NUM_2, 0);
+    // esp_sleep_enable_ext0_wakeup(GPIO_NUM_2, 0);
     esp_deep_sleep_enable_gpio_wakeup((1ULL << BTN_PIN), ESP_GPIO_WAKEUP_GPIO_LOW);
 
     // Start deep sleep (device will reboot on wake-up)
@@ -256,10 +256,10 @@ uint8_t hl_NoLists()
 
 String hl_ListName(uint8_t idx)
 {
-    return String( listName( idx ) );
+    return String(listName(idx));
 }
 
-uint8_t hl_ListMax( uint8_t idx )
+uint8_t hl_ListMax(uint8_t idx)
 {
     if (idx >= ARRAY_SIZE(list))
         return 0;
@@ -322,11 +322,11 @@ void hl_setup()
     // read data
     uint8_t val;
     NVSImpl nvs("hl_data", NVS_READONLY);
-    if( nvs.get_u8("rndLst", val) )
+    if (nvs.get_u8("rndLst", val))
         randomList = (val == 1);
-    if( nvs.get_u8("lstIdx", val) )
+    if (nvs.get_u8("lstIdx", val))
         listIdx = val % ARRAY_SIZE(list);
-    if( nvs.get_u8("lstPos", val) )
+    if (nvs.get_u8("lstPos", val))
         list[listIdx]->Set(val);
 
     listInfo();
@@ -352,4 +352,38 @@ void hl_loop()
         }
     }
     list[listIdx]->Update();
+}
+
+uint8_t progressSteps = 0;
+uint8_t progressPos = 0;
+
+void hl_progressStart(uint8_t steps)
+{
+    progressSteps = steps;
+    progressPos = 0;
+    fill_solid(leds, NUM_LEDS, CRGB::Black);
+    FastLED.show();
+}
+
+void hl_progressStep()
+{
+    if (progressSteps == 0)
+        return; // avoid divide-by-zero
+
+    progressPos++;
+    uint8_t numLit = map(progressPos, 0, progressSteps, 0, NUM_LEDS);
+    fill_solid(leds, NUM_LEDS, CRGB::Black);
+    for (uint8_t i = 0; i < numLit; i++)
+    {
+        leds[i] = CRGB::Green;
+    }
+    FastLED.show();
+}
+
+void hl_progressStop()
+{
+    fill_solid(leds, NUM_LEDS, CRGB::Blue); // Or any "ready" color
+    FastLED.show();
+    delay(1000);
+    listInfoPosLeds();
 }

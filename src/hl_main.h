@@ -17,3 +17,7 @@ void hl_Get(uint8_t& l_idx, uint8_t& e_idx, bool& isRandom);
 void hl_Set(uint8_t l_idx, uint8_t e_idx, bool isRandom);
 
 void hl_Sleep();
+
+void hl_progressStart(uint8_t steps);
+void hl_progressStep();
+void hl_progressStop();
